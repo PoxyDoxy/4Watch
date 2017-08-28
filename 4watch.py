@@ -7,7 +7,7 @@
 # Searches for Posts containing the following keywords. 
 # Requires Python 3, Developed on 3.6.2
 
-boards = ["wg","w","hr"]
+boards = ["wg", "w","hr"]
 keywords = ["galaxy","girl","spaceship"]
 save_folder_name = "4watch_downloads"
 # Should we scan the thread title?
@@ -27,37 +27,11 @@ import sys
 import time
 import json
 import os
-import getopt
-import re
 import urllib.request
-
-# Import PIP for installing packages on the go
-import pip
-def install(package):
-	pip.main(['install', package])
-
-# Import BeautifulSoup
-try:
-	from bs4 import BeautifulSoup
-except ImportError:
-	print("Installing beautifulsoup4...\n")
-	install("beautifulsoup4")
-	from bs4 import BeautifulSoup
-	print("Loaded beautifulsoup4.\n")
-
-# Import urllib3
-try:
-	import urllib3
-except ImportError:
-	print("Installing urllib3...\n")
-	install("urllib3")
-	import urllib3
-	print("Loaded urllib3.\n")
 
 # code run time diagnostics
 # 	start_time = time.clock()
 # 	print("{0:.2f}".format(time.clock() - start_time), "seconds")
-
 
 # Start main
 print("/---------------\\")
@@ -67,14 +41,6 @@ print("/ Boards:", len(boards))
 print("| Keywords:", len(keywords))
 print("\\---------------/")
 print("")
-
-# Prepare and Set Browser
-# Disable SSL Warnings
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-# Set User Agent
-user_agent = {'user-agent': 'Mozilla/5.0 (Windows NT 6.3; rv:36.0) ..'}
-# Use PoolManager with the above Header set
-browser = urllib3.PoolManager(10, headers=user_agent)
 
 def check_thread(details):
 	download = 0
@@ -103,7 +69,6 @@ def check_thread(details):
 			#download thread
 			global threads_to_download
 			threads_to_download.append([board, details['no']])
-
 			global threads_matched
 			threads_matched += 1
 		except:
@@ -114,10 +79,18 @@ def download_url(url_board, filename, filesize, ext):
 	global save_folder
 	global downloaded_image_count
 	image_url = image_url_format % (url_board, filename, ext)
-	total_path_to_new_file = os.path.normpath("%s\\%s_%s%s" % (save_folder, filename, filesize, ext))
+	total_path_to_new_file = os.path.normpath("%s%s%s_%s%s" % (save_folder, os.path.sep, filename, filesize, ext))
 	if not os.path.isfile(total_path_to_new_file):
 		data = urllib.request.urlretrieve(image_url, total_path_to_new_file)
 		downloaded_image_count += 1
+
+def fetch_json(url):
+	req = urllib.request.Request(url, headers={'User-Agent' : "4Watch Browser"})
+	data_raw = urllib.request.urlopen(req)
+	data = data_raw.read()
+	encoding = data_raw.info().get_content_charset('utf-8')
+	parsed_json = json.loads(data.decode(encoding))
+	return parsed_json
 
 threads_scanned = 0
 threads_matched = 0
@@ -147,9 +120,7 @@ for board in boards:
 	start_time = time.clock()
 
 	# Fetch Catalog containing JSON
-	jsoncatalog = browser.request('get', this_catalog_url).data
-
-	parsed_json = json.loads(jsoncatalog)
+	parsed_json = fetch_json(this_catalog_url)
 
 	for parts in parsed_json:
 		for details in parts['threads']:
@@ -167,7 +138,7 @@ print()
 print("Downloading %s threads" % threads_matched, end="")
 
 # Check to see if the downloads folder exists
-save_folder = os.path.normpath(os.path.dirname(os.path.realpath(__file__)) + "\\" + save_folder_name)
+save_folder = os.path.normpath(os.path.dirname(os.path.realpath(__file__)) + os.path.sep + save_folder_name)
 if not os.path.isdir(save_folder):
     os.makedirs(save_folder)
 
@@ -196,8 +167,7 @@ for thread in threads_to_download:
 	start_time = time.clock()
 
 	# Fetch Thread Catalog containing JSON
-	message_catalog = browser.request('get', thread_catalog_url).data
-	parsed_json = json.loads(message_catalog)
+	parsed_json = fetch_json(thread_catalog_url)
 
 	for message in parsed_json["posts"]:
 		if "ext" in message:
