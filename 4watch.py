@@ -10,12 +10,16 @@
 boards = ["wg", "w","hr"]
 keywords = ["galaxy","girl","spaceship"]
 save_folder_name = "4watch_downloads"
+
 # Should we scan the thread title?
 scan_title = 1
 # Should we scan the thread description?
 scan_description = 1
 # Should we scan the stickied/pinned threads?
 scan_sticky = 0
+# How long to wait for if looping (seconds)
+# 0 = disabled, 10 = 10 seconds
+loop_wait = 30
 
 # Adjust if you want to scan a different Chan.
 catalog_url_format = "https://boards.4chan.org/%s/catalog.json"
@@ -28,19 +32,6 @@ import time
 import json
 import os
 import urllib.request
-
-# code run time diagnostics
-# 	start_time = time.clock()
-# 	print("{0:.2f}".format(time.clock() - start_time), "seconds")
-
-# Start main
-print("/---------------\\")
-print("|   4Watch  v1  |")
-print("\---------------|")
-print("/ Boards:", len(boards))
-print("| Keywords:", len(keywords))
-print("\\---------------/")
-print("")
 
 def check_thread(details):
 	download = 0
@@ -78,11 +69,13 @@ def download_url(url_board, filename, filesize, ext):
 	global image_url_format
 	global save_folder
 	global downloaded_image_count
+	global processed_image_count
 	image_url = image_url_format % (url_board, filename, ext)
 	total_path_to_new_file = os.path.normpath("%s%s%s_%s%s" % (save_folder, os.path.sep, filename, filesize, ext))
 	if not os.path.isfile(total_path_to_new_file):
 		data = urllib.request.urlretrieve(image_url, total_path_to_new_file)
 		downloaded_image_count += 1
+	processed_image_count += 1
 
 def fetch_json(url):
 	req = urllib.request.Request(url, headers={'User-Agent' : "4Watch Browser"})
@@ -92,89 +85,125 @@ def fetch_json(url):
 	parsed_json = json.loads(data.decode(encoding))
 	return parsed_json
 
-threads_scanned = 0
-threads_matched = 0
-threads_to_download = []
-downloaded_image_count = 0
+# Start main
+while True:
+	print("/---------------\\")
+	print("|   4Watch  v1  |")
+	print("\---------------|")
+	print("/ Boards:", len(boards))
+	print("| Keywords:", len(keywords))
+	print("\\---------------/")
+	print("")
 
-# Lower keywords to lowercase in preperation for the search.
-keywords = [element.lower() for element in keywords]
+	threads_scanned = 0
+	threads_matched = 0
+	processed_image_count = 0
+	downloaded_image_count = 0
+	downloadable_image_count = 0
+	threads_to_download = []
+	images_to_download = []
 
-# Scan Each Boards Content
-for board in boards:
+	# Lower keywords to lowercase in preperation for the search.
+	keywords = [element.lower() for element in keywords]
 
-	# prepare url
-	this_catalog_url = catalog_url_format % board
+	# Scan Each Boards Content
+	for board in boards:
 
-	print("Scanning /%s/                  " % board, "\r", end="")
+		# prepare url
+		this_catalog_url = catalog_url_format % board
 
-	# Wait 1 second between Catalog Requests because of API rules
-	try:
-		runtime = time.clock() - start_time
-		if runtime < 1:
-			#print("sleeping for ", 1 - runtime)
-			time.sleep(1 - runtime)
-	except:
-		pass
+		print("Scanning /%s/                  " % board, "\r", end="")
 
-	start_time = time.clock()
+		# Wait 1 second between Catalog Requests because of API rules
+		try:
+			runtime = time.clock() - start_time
+			if runtime < 1:
+				#print("sleeping for ", 1 - runtime)
+				time.sleep(1 - runtime)
+		except:
+			pass
 
-	# Fetch Catalog containing JSON
-	parsed_json = fetch_json(this_catalog_url)
+		start_time = time.clock()
 
-	for parts in parsed_json:
-		for details in parts['threads']:
+		# Fetch Catalog containing JSON
+		parsed_json = fetch_json(this_catalog_url)
 
-			# Check if Sticky. Giggity.
-			try:
-				if details['sticky'] == 1:
-					if scan_sticky == 1:
-						check_thread(details)
-			except:
-				check_thread(details)
+		for parts in parsed_json:
+			for details in parts['threads']:
 
-print("Matched:", threads_matched, "/", threads_scanned , "(", "{0:.0f}%".format(threads_matched / threads_scanned * 100), ")")
-print()
-print("Downloading %s threads" % threads_matched, end="")
+				# Check if Sticky. Giggity.
+				try:
+					if details['sticky'] == 1:
+						if scan_sticky == 1:
+							check_thread(details)
+				except:
+					check_thread(details)
 
-# Check to see if the downloads folder exists
-save_folder = os.path.normpath(os.path.dirname(os.path.realpath(__file__)) + os.path.sep + save_folder_name)
-if not os.path.isdir(save_folder):
-    os.makedirs(save_folder)
+	print("Matched:", threads_matched, "/", threads_scanned , " threads (", "{0:.0f}%".format(threads_matched / threads_scanned * 100), ")")
+	print()
+	print("Downloading %s threads" % threads_matched, end="")
 
-# Scan Each Thread URL
-downloaded = 0
-for thread in threads_to_download:
-	url_board = thread[0]
-	url_thread = thread[1]
+	# Check to see if the downloads folder exists
+	save_folder = os.path.normpath(os.path.dirname(os.path.realpath(__file__)) + os.path.sep + save_folder_name)
+	if not os.path.isdir(save_folder):
+	    os.makedirs(save_folder)
 
-	thread_url = thread_url_format % (url_board, url_thread)
+	# Scan Each Thread URL
+	scanned_threads = 0
+	for thread in threads_to_download:
+		url_board = thread[0]
+		url_thread = thread[1]
 
-	print("\rDownloading %s/%s threads            " % (downloaded, threads_matched), "\r", end="")
+		thread_url = thread_url_format % (url_board, url_thread)
 
-	# prepare url
-	thread_catalog_url = thread_url + ".json"
+		print("\rScanning Threads | %s/%s    " % (scanned_threads, threads_matched), "\r", end="")
 
-	# Wait 1 second between Catalog Requests because of API rules
-	try:
-		runtime = time.clock() - start_time
-		if runtime < 1:
-			#print("sleeping for ", 1 - runtime)
-			time.sleep(1 - runtime)
-	except:
-		pass
+		# prepare url
+		thread_catalog_url = thread_url + ".json"
 
-	start_time = time.clock()
+		# Wait 1 second between Catalog Requests because of API rules
+		try:
+			runtime = time.clock() - start_time
+			if runtime < 1:
+				#print("sleeping for ", 1 - runtime)
+				time.sleep(1 - runtime)
+		except:
+			pass
 
-	# Fetch Thread Catalog containing JSON
-	parsed_json = fetch_json(thread_catalog_url)
+		start_time = time.clock()
 
-	for message in parsed_json["posts"]:
-		if "ext" in message:
-			try:
-				download_url(url_board, message["tim"], message["fsize"], message["ext"])
-			except:
-				pass
-	downloaded += 1
+		# Fetch Thread Catalog containing JSON
+		parsed_json = fetch_json(thread_catalog_url)
 
-print("Download Complete (%s files)." % downloaded_image_count)
+		for message in parsed_json["posts"]:
+			if "ext" in message:
+				try:
+					downloadable_image_count += 1
+					images_to_download.append([url_board, message["tim"], message["fsize"], message["ext"]])
+				except:
+					pass
+		scanned_threads += 1
+
+	for image in images_to_download:
+		print("\rDownloading | %s threads | %s/%s images (%s)                   \r" % (threads_matched, processed_image_count, downloadable_image_count, "{0:.0f}%".format(processed_image_count / downloadable_image_count * 100)), end="")
+		furl = image[0]
+		ftime = image[1]
+		fsize = image[2]
+		fext = image[3]
+		download_url(furl, ftime, fsize, fext)
+
+	print("Download Complete (%s files).                                              " % downloaded_image_count)
+	print()
+	if loop_wait == 0:
+		break
+	else:
+		time_remaining = loop_wait
+		while time_remaining >= 1:
+			print("\rStarting again in %s seconds.      \r" % time_remaining, end="")
+			time.sleep(1)
+			time_remaining -= 1
+		os.system('cls' if os.name == 'nt' else 'clear')
+
+# code run time diagnostics
+# 	start_time = time.clock()
+# 	print("{0:.2f}".format(time.clock() - start_time), "seconds")
