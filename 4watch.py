@@ -1,0 +1,210 @@
+#!/usr/bin/python
+
+# 4Watch - a 4Chan Board Image Watcher.
+# Made by PoxyDoxy.
+# Works with the following:
+# - 4chan
+# Searches for Posts containing the following keywords. 
+# Requires Python 3, Developed on 3.6.2
+
+boards = ["wg","w","hr"]
+keywords = ["galaxy","girl","spaceship"]
+save_folder_name = "4watch_downloads"
+# Should we scan the thread title?
+scan_title = 1
+# Should we scan the thread description?
+scan_description = 1
+# Should we scan the stickied/pinned threads?
+scan_sticky = 0
+
+# Adjust if you want to scan a different Chan.
+catalog_url_format = "https://boards.4chan.org/%s/catalog.json"
+thread_url_format = "https://boards.4chan.org/%s/thread/%s"
+image_url_format = "https://i.4cdn.org/%s/%s%s"
+
+# Begin Importing
+import sys
+import time
+import json
+import os
+import getopt
+import re
+import urllib.request
+
+# Import PIP for installing packages on the go
+import pip
+def install(package):
+	pip.main(['install', package])
+
+# Import BeautifulSoup
+try:
+	from bs4 import BeautifulSoup
+except ImportError:
+	print("Installing beautifulsoup4...\n")
+	install("beautifulsoup4")
+	from bs4 import BeautifulSoup
+	print("Loaded beautifulsoup4.\n")
+
+# Import urllib3
+try:
+	import urllib3
+except ImportError:
+	print("Installing urllib3...\n")
+	install("urllib3")
+	import urllib3
+	print("Loaded urllib3.\n")
+
+# code run time diagnostics
+# 	start_time = time.clock()
+# 	print("{0:.2f}".format(time.clock() - start_time), "seconds")
+
+
+# Start main
+print("/---------------\\")
+print("|   4Watch  v1  |")
+print("\---------------|")
+print("/ Boards:", len(boards))
+print("| Keywords:", len(keywords))
+print("\\---------------/")
+print("")
+
+# Prepare and Set Browser
+# Disable SSL Warnings
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+# Set User Agent
+user_agent = {'user-agent': 'Mozilla/5.0 (Windows NT 6.3; rv:36.0) ..'}
+# Use PoolManager with the above Header set
+browser = urllib3.PoolManager(10, headers=user_agent)
+
+def check_thread(details):
+	download = 0
+
+	global threads_scanned
+	threads_scanned += 1
+
+	# Scan Title
+	try:
+		if scan_title == 1:
+			if any(word in details['sub'].lower() for word in keywords):
+				download = 1
+	except:
+		pass
+
+	# Scan Description
+	try:
+		if scan_description == 1:
+			if any(word in details['com'].lower() for word in keywords):
+				download = 1
+	except:
+		pass
+
+	if download == 1:
+		try:
+			#download thread
+			global threads_to_download
+			threads_to_download.append([board, details['no']])
+
+			global threads_matched
+			threads_matched += 1
+		except:
+			pass
+
+def download_url(url_board, filename, filesize, ext):
+	global image_url_format
+	global save_folder
+	global downloaded_image_count
+	image_url = image_url_format % (url_board, filename, ext)
+	total_path_to_new_file = os.path.normpath("%s\\%s_%s%s" % (save_folder, filename, filesize, ext))
+	if not os.path.isfile(total_path_to_new_file):
+		data = urllib.request.urlretrieve(image_url, total_path_to_new_file)
+		downloaded_image_count += 1
+
+threads_scanned = 0
+threads_matched = 0
+threads_to_download = []
+downloaded_image_count = 0
+
+# Lower keywords to lowercase in preperation for the search.
+keywords = [element.lower() for element in keywords]
+
+# Scan Each Boards Content
+for board in boards:
+
+	# prepare url
+	this_catalog_url = catalog_url_format % board
+
+	print("Scanning /%s/                  " % board, "\r", end="")
+
+	# Wait 1 second between Catalog Requests because of API rules
+	try:
+		runtime = time.clock() - start_time
+		if runtime < 1:
+			#print("sleeping for ", 1 - runtime)
+			time.sleep(1 - runtime)
+	except:
+		pass
+
+	start_time = time.clock()
+
+	# Fetch Catalog containing JSON
+	jsoncatalog = browser.request('get', this_catalog_url).data
+
+	parsed_json = json.loads(jsoncatalog)
+
+	for parts in parsed_json:
+		for details in parts['threads']:
+
+			# Check if Sticky. Giggity.
+			try:
+				if details['sticky'] == 1:
+					if scan_sticky == 1:
+						check_thread(details)
+			except:
+				check_thread(details)
+
+print("Matched:", threads_matched, "/", threads_scanned , "(", "{0:.0f}%".format(threads_matched / threads_scanned * 100), ")")
+print()
+print("Downloading %s threads" % threads_matched, end="")
+
+# Check to see if the downloads folder exists
+save_folder = os.path.normpath(os.path.dirname(os.path.realpath(__file__)) + "\\" + save_folder_name)
+if not os.path.isdir(save_folder):
+    os.makedirs(save_folder)
+
+# Scan Each Thread URL
+downloaded = 0
+for thread in threads_to_download:
+	url_board = thread[0]
+	url_thread = thread[1]
+
+	thread_url = thread_url_format % (url_board, url_thread)
+
+	print("\rDownloading %s/%s threads            " % (downloaded, threads_matched), "\r", end="")
+
+	# prepare url
+	thread_catalog_url = thread_url + ".json"
+
+	# Wait 1 second between Catalog Requests because of API rules
+	try:
+		runtime = time.clock() - start_time
+		if runtime < 1:
+			#print("sleeping for ", 1 - runtime)
+			time.sleep(1 - runtime)
+	except:
+		pass
+
+	start_time = time.clock()
+
+	# Fetch Thread Catalog containing JSON
+	message_catalog = browser.request('get', thread_catalog_url).data
+	parsed_json = json.loads(message_catalog)
+
+	for message in parsed_json["posts"]:
+		if "ext" in message:
+			try:
+				download_url(url_board, message["tim"], message["fsize"], message["ext"])
+			except:
+				pass
+	downloaded += 1
+
+print("Download Complete (%s files)." % downloaded_image_count)
