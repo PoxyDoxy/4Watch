@@ -29,15 +29,20 @@ def remove_duplicates(dir):
 
 			print("\rScanning: %s/%s (%s)" % (scanned_files, total_files, "{0:.0f}%".format(scanned_files / total_files * 100)), end="")
 
-full_dir = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + folder_to_scan + os.path.sep
-total_files = len([name for name in os.listdir(full_dir) if os.path.isfile(full_dir + name)])
-dupe_count = 0
-scanned_files = 0
-
 print("/----------------------------\\")
 print("|   Duplicate File Deleter   |")
 print("|            v1              |")
 print("\\----------------------------/")
+
+full_dir = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + folder_to_scan + os.path.sep
+try:
+	total_files = len([name for name in os.listdir(full_dir) if os.path.isfile(full_dir + name)])
+except:
+	print("Error: Folder could not be found (or is empty).")
+	print("Folder: %s" % full_dir)
+	quit()
+dupe_count = 0
+scanned_files = 0
 
 remove_duplicates(full_dir)
 if dupe_count >= 1:
