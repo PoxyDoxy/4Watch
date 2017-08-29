@@ -21,3 +21,11 @@ $ python3 4watch.py
 
 #### Things to do:
   - move image downloads into seperate folders.
+
+#### Duplicate File Scanner/Remover:
+  - removedupes.py is a duplicate file remover
+  - it is run the same way as 4watch.py
+  - edit the file, adjust the scan directory, and run it with 
+```sh
+$ python3 removedupes.py
+```
