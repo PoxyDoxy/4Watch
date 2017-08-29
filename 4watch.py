@@ -7,8 +7,8 @@
 # Searches for Posts containing the following keywords. 
 # Requires Python 3, Developed on 3.6.2
 
-boards = ["wg", "w","hr"]
-keywords = ["galaxy","girl","spaceship"]
+boards = ["wg", "w"]
+keywords = ["galaxy","spaceship", "your wallpaper"]
 save_folder_name = "4watch_downloads"
 
 # Should we scan the thread title?
@@ -69,12 +69,19 @@ def download_url(url_board, filename, filesize, ext):
 	global image_url_format
 	global save_folder
 	global downloaded_image_count
+	global failed_image_count
 	global processed_image_count
 	image_url = image_url_format % (url_board, filename, ext)
 	total_path_to_new_file = os.path.normpath("%s%s%s_%s%s" % (save_folder, os.path.sep, filename, filesize, ext))
 	if not os.path.isfile(total_path_to_new_file):
-		data = urllib.request.urlretrieve(image_url, total_path_to_new_file)
-		downloaded_image_count += 1
+		try:
+			data = urllib.request.urlretrieve(image_url, total_path_to_new_file)
+			downloaded_image_count += 1
+		except:
+			print("Warning: Unable to get %s" % image_url)
+			failed_image_count += 1
+			pass
+		
 	processed_image_count += 1
 
 def fetch_json(url):
@@ -99,6 +106,7 @@ while True:
 	threads_matched = 0
 	processed_image_count = 0
 	downloaded_image_count = 0
+	failed_image_count = 0
 	downloadable_image_count = 0
 	threads_to_download = []
 	images_to_download = []
@@ -126,7 +134,11 @@ while True:
 		start_time = time.clock()
 
 		# Fetch Catalog containing JSON
-		parsed_json = fetch_json(this_catalog_url)
+		try:
+			parsed_json = fetch_json(this_catalog_url)
+		except:
+			print("Warning: Could not load /%s/" % board)
+			continue
 
 		for parts in parsed_json:
 			for details in parts['threads']:
@@ -173,7 +185,11 @@ while True:
 		start_time = time.clock()
 
 		# Fetch Thread Catalog containing JSON
-		parsed_json = fetch_json(thread_catalog_url)
+		try:
+			parsed_json = fetch_json(thread_catalog_url)
+		except:
+			print("Warning: Thread %s has 404'd" % url_thread)
+			continue
 
 		for message in parsed_json["posts"]:
 			if "ext" in message:
@@ -193,6 +209,8 @@ while True:
 		download_url(furl, ftime, fsize, fext)
 
 	print("Download Complete (%s files).                                              " % downloaded_image_count)
+	if failed_image_count >= 1:
+		print("Failed to download %s files.                                              " % failed_image_count)
 	print()
 	if loop_wait == 0:
 		break
