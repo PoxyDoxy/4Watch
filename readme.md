@@ -4,8 +4,8 @@ Give it a list of 4Chan Boards, and Keywords to search for, and you're off to th
 
 #### What does it do?
   - Searches Each Board for Threads that contain any of the keywords.
-  - Downloads all images/webms/gifs from the Boards found.
-  - Loops around every X seconds (0 = run once)
+  - Downloads all images/webms/gifs from the Threads found.
+  - Loops around every X seconds (0 = disable loop)
 
 #### Works on Windows & Linux.
 
