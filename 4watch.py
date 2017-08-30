@@ -40,6 +40,12 @@ def clean_string(string):
 	string = string.replace(";", " ")
 	string = string.replace(":", " ")
 	string = string.replace("+", " ")
+	string = string.replace("!", " ")
+	string = string.replace("?", " ")
+	string = string.replace("[", " ")
+	string = string.replace("]", " ")
+	string = string.replace("(", " ")
+	string = string.replace(")", " ")
 	string = string.lower()
 	return string
 
