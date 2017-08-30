@@ -8,7 +8,7 @@
 # Requires Python 3, Developed on 3.6.2
 
 boards = ["wg", "w"]
-keywords = ["galaxy","spaceship", "your wallpaper"]
+keywords = ["galaxy","spaceship"]
 save_folder_name = "4watch_downloads"
 
 # Should we scan the thread title?
@@ -42,16 +42,18 @@ def check_thread(details):
 	# Scan Title
 	try:
 		if scan_title == 1:
-			if any(word in details['sub'].lower() for word in keywords):
-				download = 1
+			for singleword in details['sub'].split(' '):
+				if singleword.lower() in keywords:
+					download = 1
 	except:
 		pass
 
 	# Scan Description
 	try:
 		if scan_description == 1:
-			if any(word in details['com'].lower() for word in keywords):
-				download = 1
+			for singleword in details['com'].split(' '):
+				if singleword.lower() in keywords:
+					download = 1
 	except:
 		pass
 
