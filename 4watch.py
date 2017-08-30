@@ -33,6 +33,16 @@ import json
 import os
 import urllib.request
 
+def clean_string(string):
+	# Clean the String to ensure that words match properly, both with seperators and fullstops.
+	string = string.replace(".", " ")
+	string = string.replace(",", " ")
+	string = string.replace(";", " ")
+	string = string.replace(":", " ")
+	string = string.replace("+", " ")
+	string = string.lower()
+	return string
+
 def check_thread(details):
 	download = 0
 
@@ -42,8 +52,8 @@ def check_thread(details):
 	# Scan Title
 	try:
 		if scan_title == 1:
-			for singleword in details['sub'].split(' '):
-				if singleword.lower() in keywords:
+			for singleword in clean_string(details['sub']).split(' '):
+				if singleword in keywords:
 					download = 1
 	except:
 		pass
@@ -51,7 +61,7 @@ def check_thread(details):
 	# Scan Description
 	try:
 		if scan_description == 1:
-			for singleword in details['com'].split(' '):
+			for singleword in clean_string(details['com']).split(' '):
 				if singleword.lower() in keywords:
 					download = 1
 	except:
