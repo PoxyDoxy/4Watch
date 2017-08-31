@@ -169,67 +169,74 @@ while True:
 				except:
 					check_thread(details)
 
-	print("Matched:", threads_matched, "/", threads_scanned , " threads (", "{0:.0f}%".format(threads_matched / threads_scanned * 100), ")")
-	print()
-	print("Downloading %s threads" % threads_matched, end="")
+	if threads_scanned >= 1: 
+		if threads_matched >=1:
+			print("Matched:", threads_matched, "/", threads_scanned , " threads (", "{0:.0f}%".format(threads_matched / threads_scanned * 100), ")")
+			print()
+			print("Downloading %s threads" % threads_matched, end="")
 
-	# Check to see if the downloads folder exists
-	save_folder = os.path.normpath(os.path.dirname(os.path.realpath(__file__)) + os.path.sep + save_folder_name)
-	if not os.path.isdir(save_folder):
-	    os.makedirs(save_folder)
+			# Check to see if the downloads folder exists
+			save_folder = os.path.normpath(os.path.dirname(os.path.realpath(__file__)) + os.path.sep + save_folder_name)
+			if not os.path.isdir(save_folder):
+			    os.makedirs(save_folder)
 
-	# Scan Each Thread URL
-	scanned_threads = 0
-	for thread in threads_to_download:
-		url_board = thread[0]
-		url_thread = thread[1]
+			# Scan Each Thread URL
+			scanned_threads = 0
+			for thread in threads_to_download:
+				url_board = thread[0]
+				url_thread = thread[1]
 
-		thread_url = thread_url_format % (url_board, url_thread)
+				thread_url = thread_url_format % (url_board, url_thread)
 
-		print("\rScanning Threads | %s/%s    " % (scanned_threads, threads_matched), "\r", end="")
+				print("\rScanning Threads | %s/%s    " % (scanned_threads, threads_matched), "\r", end="")
 
-		# prepare url
-		thread_catalog_url = thread_url + ".json"
+				# prepare url
+				thread_catalog_url = thread_url + ".json"
 
-		# Wait 1 second between Catalog Requests because of API rules
-		try:
-			runtime = time.clock() - start_time
-			if runtime < 1:
-				#print("sleeping for ", 1 - runtime)
-				time.sleep(1 - runtime)
-		except:
-			pass
-
-		start_time = time.clock()
-
-		# Fetch Thread Catalog containing JSON
-		try:
-			parsed_json = fetch_json(thread_catalog_url)
-		except:
-			print("Warning: Thread %s has 404'd" % url_thread)
-			continue
-
-		for message in parsed_json["posts"]:
-			if "ext" in message:
+				# Wait 1 second between Catalog Requests because of API rules
 				try:
-					downloadable_image_count += 1
-					images_to_download.append([url_board, message["tim"], message["fsize"], message["ext"]])
+					runtime = time.clock() - start_time
+					if runtime < 1:
+						#print("sleeping for ", 1 - runtime)
+						time.sleep(1 - runtime)
 				except:
 					pass
-		scanned_threads += 1
 
-	for image in images_to_download:
-		print("\rDownloading | %s threads | %s/%s images (%s)                   \r" % (threads_matched, processed_image_count, downloadable_image_count, "{0:.0f}%".format(processed_image_count / downloadable_image_count * 100)), end="")
-		furl = image[0]
-		ftime = image[1]
-		fsize = image[2]
-		fext = image[3]
-		download_url(furl, ftime, fsize, fext)
+				start_time = time.clock()
 
-	print("Download Complete (%s files).                                              " % downloaded_image_count)
-	if failed_image_count >= 1:
-		print("Failed to download %s files.                                              " % failed_image_count)
-	print()
+				# Fetch Thread Catalog containing JSON
+				try:
+					parsed_json = fetch_json(thread_catalog_url)
+				except:
+					print("Warning: Thread %s has 404'd" % url_thread)
+					continue
+
+				for message in parsed_json["posts"]:
+					if "ext" in message:
+						try:
+							downloadable_image_count += 1
+							images_to_download.append([url_board, message["tim"], message["fsize"], message["ext"]])
+						except:
+							pass
+				scanned_threads += 1
+
+			for image in images_to_download:
+				print("\rDownloading | %s threads | %s/%s images (%s)                   \r" % (threads_matched, processed_image_count, downloadable_image_count, "{0:.0f}%".format(processed_image_count / downloadable_image_count * 100)), end="")
+				furl = image[0]
+				ftime = image[1]
+				fsize = image[2]
+				fext = image[3]
+				download_url(furl, ftime, fsize, fext)
+
+			print("Download Complete (%s files).                                              " % downloaded_image_count)
+			if failed_image_count >= 1:
+				print("Failed to download %s files.                                              " % failed_image_count)
+			print()
+		else:
+			print("No threads matched.")
+	else:
+		print("No threads found, Check your Internet?")
+
 	if loop_wait == 0:
 		break
 	else:
